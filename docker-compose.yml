@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/db:/data/db
+      - ./data/media:/data/media
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    restart: unless-stopped
