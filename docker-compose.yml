@@ -10,4 +10,5 @@ services:
       - ./data/media:/data/media
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Default=Data Source=/data/db/media-server.db
     restart: unless-stopped
