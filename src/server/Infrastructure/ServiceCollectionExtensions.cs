@@ -1,7 +1,9 @@
 using Application.Auth;
 using Application.Entities;
+using Application.Storage;
 using Infrastructure.Auth;
 using Infrastructure.Persistence;
+using Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -25,6 +27,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<AdminOptions>, AdminOptionsValidator>();
         services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
         services.AddScoped<IAuthService, AuthService>();
+
+        services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<StorageOptions>, StorageOptionsValidator>();
+        services.AddSingleton<IStorageProvider, LocalStorageProvider>();
 
         return services;
     }
