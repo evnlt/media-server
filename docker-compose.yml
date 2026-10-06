@@ -13,6 +13,7 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__Default=Data Source=/data/db/media-server.db
       - DataProtection__KeysPath=/data/keys
+      - Storage__RootPath=/data/media
       - Admin__Username=${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env}
       - Admin__Password=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (min 10 characters)}
     restart: unless-stopped
