@@ -1,6 +1,6 @@
-namespace Application.Entities;
+namespace Infrastructure.Entities;
 
-public class MediaFile
+public class MediaFileEntity
 {
     public Guid Id { get; set; }
     public required string FileName { get; set; }

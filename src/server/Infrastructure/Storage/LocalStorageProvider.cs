@@ -1,4 +1,3 @@
-using Application.Storage;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Storage;
@@ -36,12 +35,12 @@ public class LocalStorageProvider : IStorageProvider
         return Task.CompletedTask;
     }
 
-    public Task<StorageItemMetadata?> GetMetadataAsync(string path, CancellationToken cancellationToken = default)
+    public Task<StorageItemMetadataModel?> GetMetadataAsync(string path, CancellationToken cancellationToken = default)
     {
         var fullPath = ResolvePath(path);
         var info = new FileInfo(fullPath);
-        StorageItemMetadata? metadata = info.Exists
-            ? new StorageItemMetadata(info.Length, info.LastWriteTimeUtc)
+        StorageItemMetadataModel? metadata = info.Exists
+            ? new StorageItemMetadataModel(info.Length, info.LastWriteTimeUtc)
             : null;
         return Task.FromResult(metadata);
     }
@@ -54,7 +53,9 @@ public class LocalStorageProvider : IStorageProvider
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
 
         if (!fullPath.StartsWith(_root + Path.DirectorySeparatorChar, comparison) && fullPath != _root)
+        {
             throw new ArgumentException($"Path '{path}' resolves outside the storage root.", nameof(path));
+        }
 
         return fullPath;
     }

@@ -1,4 +1,4 @@
-namespace Application.Storage;
+namespace Infrastructure.Storage;
 
 /// <summary>
 /// Stores and retrieves media content by a logical, relative path (e.g. "2026/10/clip.mp4").
@@ -12,5 +12,5 @@ public interface IStorageProvider
 
     Task DeleteAsync(string path, CancellationToken cancellationToken = default);
 
-    Task<StorageItemMetadata?> GetMetadataAsync(string path, CancellationToken cancellationToken = default);
+    Task<StorageItemMetadataModel?> GetMetadataAsync(string path, CancellationToken cancellationToken = default);
 }
