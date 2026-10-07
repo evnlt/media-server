@@ -1,4 +1,4 @@
-using Application.Entities;
+using Infrastructure.Entities;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -17,17 +17,19 @@ public static class AdminSeeder
 
         var options = sp.GetRequiredService<IOptions<AdminOptions>>().Value;
         var db = sp.GetRequiredService<AppDbContext>();
-        var hasher = sp.GetRequiredService<IPasswordHasher<User>>();
+        var hasher = sp.GetRequiredService<IPasswordHasher<UserEntity>>();
         var logger = sp.GetRequiredService<ILoggerFactory>().CreateLogger("AdminSeeder");
 
         var users = await db.Users.ToListAsync(cancellationToken);
         if (users.Count > 1)
+        {
             throw new InvalidOperationException($"Expected exactly one user but found {users.Count}.");
+        }
 
         var user = users.SingleOrDefault();
         if (user is null)
         {
-            user = new User { Id = Guid.NewGuid(), Username = options.Username, PasswordHash = "" };
+            user = new UserEntity { Id = Guid.NewGuid(), Username = options.Username, PasswordHash = "" };
             user.PasswordHash = hasher.HashPassword(user, options.Password);
             db.Users.Add(user);
             await db.SaveChangesAsync(cancellationToken);

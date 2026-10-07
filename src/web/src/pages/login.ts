@@ -31,7 +31,11 @@ export function renderLogin(root: HTMLElement, onSuccess: () => void): void {
     const data = new FormData(form);
     try {
       const result = await login(String(data.get('username')), String(data.get('password')));
-      if (result === 'ok') return onSuccess();
+      if (result === 'ok') {
+        onSuccess();
+        return;
+      }
+
       error.textContent = messages[result];
     } catch {
       error.textContent = messages.error;

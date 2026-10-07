@@ -8,8 +8,11 @@ const root = document.querySelector<HTMLElement>('#app')!;
 async function start(): Promise<void> {
   try {
     const user = await getCurrentUser();
-    if (user) renderHome(root, user, start);
-    else renderLogin(root, start);
+    if (user) {
+      renderHome(root, user, start);
+    } else {
+      renderLogin(root, start);
+    }
   } catch {
     root.textContent = 'Cannot reach the server.';
   }

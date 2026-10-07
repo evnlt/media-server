@@ -1,6 +1,6 @@
-namespace Application.Entities;
+namespace Infrastructure.Entities;
 
-public class User
+public class UserEntity
 {
     public Guid Id { get; set; }
     public required string Username { get; set; }

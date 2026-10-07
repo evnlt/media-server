@@ -6,5 +6,7 @@
 .idea/
 .vs/
 .vscode/
-data/
-*.db
+**/data/
+**/*.db
+**/*.db-shm
+**/*.db-wal

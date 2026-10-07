@@ -17,7 +17,7 @@ namespace Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.9");
 
-            modelBuilder.Entity("Application.Entities.MediaFile", b =>
+            modelBuilder.Entity("Infrastructure.Entities.MediaFileEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -50,7 +50,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("MediaFiles", (string)null);
                 });
 
-            modelBuilder.Entity("Application.Entities.User", b =>
+            modelBuilder.Entity("Infrastructure.Entities.UserEntity", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()

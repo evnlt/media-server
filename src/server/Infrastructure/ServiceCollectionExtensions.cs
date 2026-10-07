@@ -1,7 +1,5 @@
-using Application.Auth;
-using Application.Entities;
-using Application.Storage;
 using Infrastructure.Auth;
+using Infrastructure.Entities;
 using Infrastructure.Persistence;
 using Infrastructure.Storage;
 using Microsoft.AspNetCore.Identity;
@@ -25,8 +23,7 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<AdminOptions>().BindConfiguration(AdminOptions.SectionName).ValidateOnStart();
         services.AddSingleton<IValidateOptions<AdminOptions>, AdminOptionsValidator>();
-        services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
-        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IPasswordHasher<UserEntity>, PasswordHasher<UserEntity>>();
 
         services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName).ValidateOnStart();
         services.AddSingleton<IValidateOptions<StorageOptions>, StorageOptionsValidator>();
@@ -46,6 +43,8 @@ public static class ServiceCollectionExtensions
         var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
         var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
         if (!string.IsNullOrEmpty(directory))
+        {
             Directory.CreateDirectory(directory);
+        }
     }
 }

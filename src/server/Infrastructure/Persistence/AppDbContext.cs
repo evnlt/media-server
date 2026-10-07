@@ -1,16 +1,21 @@
-using Application.Entities;
+using Infrastructure.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;
 
-public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
+public class AppDbContext : DbContext
 {
-    public DbSet<User> Users => Set<User>();
-    public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<UserEntity> Users => Set<UserEntity>();
+    public DbSet<MediaFileEntity> MediaFiles => Set<MediaFileEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<User>(e =>
+        modelBuilder.Entity<UserEntity>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.Username).IsRequired().HasMaxLength(100);
@@ -18,7 +23,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(x => x.PasswordHash).IsRequired();
         });
 
-        modelBuilder.Entity<MediaFile>(e =>
+        modelBuilder.Entity<MediaFileEntity>(e =>
         {
             e.HasKey(x => x.Id);
             e.Property(x => x.FileName).IsRequired().HasMaxLength(500);
