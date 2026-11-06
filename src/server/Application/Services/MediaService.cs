@@ -1,8 +1,10 @@
 using Application.Abstraction.Services;
 using Application.Exceptions;
+using Infrastructure;
+using Infrastructure.Abstraction.Services;
 using Infrastructure.Entities;
-using Infrastructure.Persistence;
-using Infrastructure.Storage;
+using Infrastructure.Enums;
+using Infrastructure.Models;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
@@ -13,12 +15,14 @@ public class MediaService : IMediaService
 
     private readonly AppDbContext _db;
     private readonly IStorageProvider _storage;
+    private readonly ITranscodeQueue _transcodeQueue;
     private readonly ILogger<MediaService> _logger;
 
-    public MediaService(AppDbContext db, IStorageProvider storage, ILogger<MediaService> logger)
+    public MediaService(AppDbContext db, IStorageProvider storage, ITranscodeQueue transcodeQueue, ILogger<MediaService> logger)
     {
         _db = db;
         _storage = storage;
+        _transcodeQueue = transcodeQueue;
         _logger = logger;
     }
 
@@ -54,7 +58,7 @@ public class MediaService : IMediaService
                                                 ?? throw new InvalidOperationException("Uploaded file is missing from storage immediately after saving.");
 
             mediaFile.SizeBytes = metadata.SizeBytes;
-            mediaFile.Status = MediaFileStatus.Ready;
+            mediaFile.Status = MediaFileStatus.Processing;
             await _db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -75,6 +79,8 @@ public class MediaService : IMediaService
 
             throw new MediaUploadException("Upload failed.", ex);
         }
+
+        _transcodeQueue.Enqueue(mediaFile.Id);
 
         return mediaFile;
     }

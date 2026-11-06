@@ -12,4 +12,4 @@ dotnet tool restore
 dotnet ef migrations add "$1" \
   --project . \
   --startup-project ../Api \
-  --output-dir Persistence/Migrations
+  --output-dir Migrations

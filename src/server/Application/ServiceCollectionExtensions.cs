@@ -10,6 +10,10 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IMediaService, MediaService>();
+        services.AddScoped<ITranscodeService, TranscodeService>();
+
+        services.AddSingleton<ITranscodeQueue, TranscodeQueue>();
+        services.AddHostedService<TranscodeWorker>();
 
         return services;
     }
