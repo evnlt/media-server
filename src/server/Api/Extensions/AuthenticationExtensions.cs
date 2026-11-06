@@ -1,4 +1,5 @@
 using System.Threading.RateLimiting;
+using Api.Settings;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
@@ -10,13 +11,17 @@ public static class AuthenticationExtensions
     public const string LoginRateLimitPolicy = "login";
 
     public static IServiceCollection AddAppAuthentication(this IServiceCollection services,
-        IConfiguration configuration)
+        DataProtectionSettings dataProtection)
     {
+        if (string.IsNullOrWhiteSpace(dataProtection?.KeysPath))
+        {
+            throw new InvalidOperationException("DataProtection:KeysPath is not configured.");
+        }
+
         // Persisted so sessions survive container restarts and redeploys.
-        var keysPath = configuration["DataProtection:KeysPath"] ?? "data/keys";
         services.AddDataProtection()
             .SetApplicationName("media-server")
-            .PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+            .PersistKeysToFileSystem(new DirectoryInfo(dataProtection.KeysPath));
 
         services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
             .AddCookie(o =>

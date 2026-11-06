@@ -35,12 +35,12 @@ public class MultipartFileReader : IMultipartFileReader
             sizeLimitFeature.MaxRequestBodySize = null;
         }
 
-        var reader = new MultipartReader(boundary, request.Body) { BodyLengthLimit = null };
+        MultipartReader reader = new(boundary, request.Body) { BodyLengthLimit = null };
 
         MultipartSection? section = await reader.ReadNextSectionAsync(cancellationToken);
         while (section is not null)
         {
-            if (ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out var contentDisposition)
+            if (ContentDispositionHeaderValue.TryParse(section.ContentDisposition, out ContentDispositionHeaderValue? contentDisposition)
                 && contentDisposition.DispositionType.ToString().Equals("form-data", StringComparison.OrdinalIgnoreCase)
                 && contentDisposition.FileName.HasValue)
             {

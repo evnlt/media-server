@@ -1,9 +1,8 @@
-namespace Infrastructure.Storage;
+using Infrastructure.Models;
 
-/// <summary>
-/// Stores and retrieves media content by a logical, relative path (e.g. "2026/10/clip.mp4").
-/// Implementations decide where that path actually lives — local disk, S3, Google Drive, etc.
-/// </summary>
+namespace Infrastructure.Abstraction.Services;
+
+// Paths are logical and relative; each provider decides where they actually live.
 public interface IStorageProvider
 {
     Task<Stream> OpenReadAsync(string path, CancellationToken cancellationToken = default);
@@ -13,4 +12,7 @@ public interface IStorageProvider
     Task DeleteAsync(string path, CancellationToken cancellationToken = default);
 
     Task<StorageItemMetadataModel?> GetMetadataAsync(string path, CancellationToken cancellationToken = default);
+
+    // Null when the provider keeps no local files; the path need not exist yet.
+    string? GetLocalPath(string path);
 }

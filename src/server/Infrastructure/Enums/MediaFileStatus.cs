@@ -1,4 +1,4 @@
-namespace Infrastructure.Entities;
+namespace Infrastructure.Enums;
 
 public enum MediaFileStatus
 {

@@ -40,7 +40,13 @@ export function renderUploadForm(container: HTMLElement): void {
         progress.value = percent;
         show(`Uploading... ${percent}%`, false);
       });
-      show(`Uploaded ${media.fileName} (${formatSize(media.sizeBytes)}) - ${media.status}`, false);
+      const uploaded = `Uploaded ${media.fileName} (${formatSize(media.sizeBytes)})`;
+      if (media.status === 'Processing') {
+        show(`${uploaded}. Converting in the background.`, false);
+      } else {
+        show(`${uploaded} - ${media.status}`, false);
+      }
+
       form.reset();
     } catch (error) {
       show(error instanceof Error ? error.message : 'Upload failed.', true);

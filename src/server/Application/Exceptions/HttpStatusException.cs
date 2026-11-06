@@ -1,10 +1,6 @@
 namespace Application.Exceptions;
 
-/// <summary>
-/// Base for exceptions a service throws to signal exactly which HTTP response the failure
-/// should become. A single handler in Program.cs maps any subclass to its carried status/title
-/// — controllers don't catch these individually.
-/// </summary>
+// Services throw subclasses to pick the HTTP response; the handler in Program.cs maps them.
 public abstract class HttpStatusException : Exception
 {
     protected HttpStatusException(int statusCode, string title, string message)

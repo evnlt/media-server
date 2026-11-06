@@ -15,6 +15,14 @@ RUN dotnet publish Api/Api.csproj -c Release -o /app/publish --no-restore
 
 # --- runtime ---
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+
+# Uploads are transcoded with ffmpeg; the checks fail the build if its H.264 or AV1 encoder is missing.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && ffmpeg -hide_banner -encoders | grep -q " libx264 " \
+    && ffmpeg -hide_banner -encoders | grep -q " libsvtav1 "
+
 WORKDIR /app
 COPY --from=server-build /app/publish ./
 COPY --from=web-build /web/dist ./wwwroot

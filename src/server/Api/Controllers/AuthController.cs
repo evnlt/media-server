@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Api.Extensions;
 using Api.Models;
 using Application.Abstraction.Services;
+using Infrastructure.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -26,7 +27,7 @@ public class AuthController : ControllerBase
     [EnableRateLimiting(AuthenticationExtensions.LoginRateLimitPolicy)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var user = await _authService.AuthenticateAsync(request.Username, request.Password, cancellationToken);
+        UserEntity? user = await _authService.AuthenticateAsync(request.Username, request.Password, cancellationToken);
         if (user is null)
         {
             return Unauthorized();
