@@ -42,7 +42,7 @@ public class LocalStorageProvider : IStorageProvider
         string fullPath = ResolvePath(path);
         FileInfo info = new FileInfo(fullPath);
         StorageItemMetadataModel? metadata = info.Exists
-            ? new StorageItemMetadataModel(info.Length, info.LastWriteTimeUtc)
+            ? new StorageItemMetadataModel { SizeBytes = info.Length, LastModifiedUtc = info.LastWriteTimeUtc }
             : null;
         return Task.FromResult(metadata);
     }

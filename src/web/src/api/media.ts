@@ -1,12 +1,27 @@
-export interface UploadedMedia {
+export type MediaStatus = 'Uploading' | 'Queued' | 'Transcoding' | 'Ready' | 'Failed' | 'Missing';
+
+export interface MediaFile {
   id: string;
   fileName: string;
   sizeBytes: number;
-  status: string;
+  durationSeconds: number | null;
+  status: MediaStatus;
+  progressPercent: number | null;
+  failureReason: string | null;
+  createdAt: string;
+}
+
+export async function listMedia(): Promise<MediaFile[]> {
+  const response = await fetch('/api/media');
+  if (!response.ok) {
+    throw new Error(response.status === 401 ? 'Session expired. Log in again.' : `Could not load the library (${response.status}).`);
+  }
+
+  return response.json();
 }
 
 // XMLHttpRequest rather than fetch: fetch can't report upload progress.
-export function uploadMedia(file: File, onProgress: (fraction: number) => void): Promise<UploadedMedia> {
+export function uploadMedia(file: File, onProgress: (fraction: number) => void): Promise<MediaFile> {
   return new Promise((resolve, reject) => {
     const form = new FormData();
     form.append('file', file);
@@ -22,7 +37,7 @@ export function uploadMedia(file: File, onProgress: (fraction: number) => void):
 
     xhr.addEventListener('load', () => {
       if (xhr.status === 201) {
-        resolve(JSON.parse(xhr.responseText) as UploadedMedia);
+        resolve(JSON.parse(xhr.responseText) as MediaFile);
         return;
       }
 

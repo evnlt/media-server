@@ -55,6 +55,6 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public IActionResult Me()
     {
-        return Ok(new CurrentUserResponse(User.Identity?.Name ?? string.Empty));
+        return Ok(new CurrentUserResponse { Username = User.Identity?.Name ?? string.Empty });
     }
 }

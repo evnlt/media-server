@@ -21,6 +21,9 @@ public sealed class MediaFileEntityConfiguration : IEntityTypeConfiguration<Medi
             .HasConversion<string>()
             .HasMaxLength(20);
 
+        builder.Property(x => x.FailureReason)
+            .HasMaxLength(MediaFileEntity.FailureReasonMaxLength);
+
         builder.HasIndex(x => x.Status);
     }
 }

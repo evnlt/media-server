@@ -32,7 +32,7 @@ public class TranscodeWorker : BackgroundService
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // Shutting down: an interrupted file stays Processing and is queued again on the next start.
+            // Shutting down: an interrupted file stays Transcoding and is queued again on the next start.
         }
     }
 

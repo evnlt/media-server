@@ -3,7 +3,7 @@ using Api.Filters;
 using Api.Models;
 using Api.Services;
 using Application.Abstraction.Services;
-using Infrastructure.Entities;
+using Application.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -21,6 +21,23 @@ public class MediaController : ControllerBase
         _mediaService = mediaService;
     }
 
+    [HttpGet]
+    public async Task<IReadOnlyList<MediaFileResponse>> GetAll(CancellationToken cancellationToken)
+    {
+        IReadOnlyList<MediaFileModel> mediaFiles = await _mediaService.GetAllAsync(cancellationToken);
+
+        return mediaFiles.Select(x => x.ToResponse()).ToList();
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<MediaFileResponse> Get(Guid id, CancellationToken cancellationToken)
+    {
+        MediaFileModel mediaFile = await _mediaService.GetAsync(id, cancellationToken);
+
+        return mediaFile.ToResponse();
+    }
+
+    // Takes no parameters: a CancellationToken parameter makes model binding drain the multipart body.
     [HttpPost]
     [DisableFormValueModelBinding]
     public async Task<IActionResult> Upload()
@@ -28,8 +45,8 @@ public class MediaController : ControllerBase
         CancellationToken cancellationToken = HttpContext.RequestAborted;
 
         MultipartFileModel fileModel = await _multipartFileReader.ReadSingleFileAsync(Request, cancellationToken);
-        MediaFileEntity mediaFile = await _mediaService.UploadAsync(fileModel.FileName, fileModel.Content, cancellationToken);
+        MediaFileModel mediaFile = await _mediaService.UploadAsync(fileModel.FileName, fileModel.Content, cancellationToken);
 
-        return Created($"/api/media/{mediaFile.Id}", mediaFile.ToResponse());
+        return CreatedAtAction(nameof(Get), new { id = mediaFile.Id }, mediaFile.ToResponse());
     }
 }

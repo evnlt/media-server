@@ -91,3 +91,46 @@ progress {
 #logout {
   margin-top: 1.25rem;
 }
+
+.library {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  max-width: 40rem;
+}
+
+.library-item {
+  display: grid;
+  gap: 0.1rem;
+  border-left: 2px solid #3fae3f;
+  padding-left: 0.5rem;
+}
+
+.library-name {
+  overflow-wrap: anywhere;
+}
+
+.library-details {
+  font-size: 0.85rem;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+
+.status-queued,
+.status-transcoding,
+.status-uploading {
+  border-left-style: dashed;
+}
+
+.status-failed,
+.status-missing {
+  border-left-color: #ff7b7b;
+}
+
+.status-failed .library-details,
+.status-missing .library-details {
+  color: #ff7b7b;
+  opacity: 1;
+}

@@ -45,7 +45,7 @@ public class MultipartFileReader : IMultipartFileReader
                 && contentDisposition.FileName.HasValue)
             {
                 string fileName = HeaderUtilities.RemoveQuotes(contentDisposition.FileName.Value).ToString();
-                return new MultipartFileModel(fileName, section.Body);
+                return new MultipartFileModel { FileName = fileName, Content = section.Body };
             }
 
             section = await reader.ReadNextSectionAsync(cancellationToken);

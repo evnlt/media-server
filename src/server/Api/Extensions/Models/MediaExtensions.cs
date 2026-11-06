@@ -1,12 +1,22 @@
 using Api.Models;
-using Infrastructure.Entities;
+using Application.Models;
 
 namespace Api.Extensions.Models;
 
 public static class MediaExtensions
 {
-    public static MediaUploadResponse ToResponse(this MediaFileEntity mediaFile)
+    public static MediaFileResponse ToResponse(this MediaFileModel mediaFile)
     {
-        return new MediaUploadResponse(mediaFile.Id, mediaFile.FileName, mediaFile.SizeBytes, mediaFile.Status.ToString());
+        return new MediaFileResponse
+        {
+            Id = mediaFile.Id,
+            FileName = mediaFile.FileName,
+            SizeBytes = mediaFile.SizeBytes,
+            DurationSeconds = mediaFile.DurationSeconds,
+            Status = mediaFile.Status.ToString(),
+            ProgressPercent = mediaFile.ProgressPercent,
+            FailureReason = mediaFile.FailureReason,
+            CreatedAt = mediaFile.CreatedAt
+        };
     }
 }

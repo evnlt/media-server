@@ -13,6 +13,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITranscodeService, TranscodeService>();
 
         services.AddSingleton<ITranscodeQueue, TranscodeQueue>();
+        services.AddSingleton<ITranscodeProgressTracker, TranscodeProgressTracker>();
         services.AddHostedService<TranscodeWorker>();
 
         return services;
