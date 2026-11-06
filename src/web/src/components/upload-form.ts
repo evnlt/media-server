@@ -1,6 +1,7 @@
 import { uploadMedia } from '../api/media';
+import { formatSize } from '../format';
 
-export function renderUploadForm(container: HTMLElement): void {
+export function renderUploadForm(container: HTMLElement, onUploaded: () => void): void {
   container.innerHTML = `
     <form id="upload-form">
       <label>File <input id="upload-file" name="file" type="file" required /></label>
@@ -41,13 +42,14 @@ export function renderUploadForm(container: HTMLElement): void {
         show(`Uploading... ${percent}%`, false);
       });
       const uploaded = `Uploaded ${media.fileName} (${formatSize(media.sizeBytes)})`;
-      if (media.status === 'Processing') {
+      if (media.status === 'Queued') {
         show(`${uploaded}. Converting in the background.`, false);
       } else {
         show(`${uploaded} - ${media.status}`, false);
       }
 
       form.reset();
+      onUploaded();
     } catch (error) {
       show(error instanceof Error ? error.message : 'Upload failed.', true);
     } finally {
@@ -55,20 +57,4 @@ export function renderUploadForm(container: HTMLElement): void {
       progress.hidden = true;
     }
   });
-}
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) {
-    return `${bytes} B`;
-  }
-
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-
-  return `${value.toFixed(1)} ${units[unit]}`;
 }

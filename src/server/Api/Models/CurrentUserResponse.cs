@@ -1,3 +1,6 @@
 namespace Api.Models;
 
-public record CurrentUserResponse(string Username);
+public record CurrentUserResponse
+{
+    public required string Username { get; init; }
+}

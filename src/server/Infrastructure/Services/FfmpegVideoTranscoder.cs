@@ -4,6 +4,7 @@ using System.Globalization;
 using Infrastructure.Abstraction.Services;
 using Infrastructure.Common;
 using Infrastructure.Exceptions;
+using Infrastructure.Models;
 using Infrastructure.Settings;
 using Microsoft.Extensions.Logging;
 
@@ -30,7 +31,8 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
         _logger = logger;
     }
 
-    public async Task TranscodeAsync(string inputPath, string outputPath, CancellationToken cancellationToken = default)
+    public async Task<double?> TranscodeAsync(
+        string inputPath, string outputPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -42,12 +44,14 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
         jobCancellation.CancelAfter(TimeSpan.FromMinutes(_settings.JobTimeoutMinutes));
 
         Stopwatch stopwatch = Stopwatch.StartNew();
+        double? outputSeconds;
 
         try
         {
             double? inputSeconds = await ProbeDurationAsync(inputPath, jobCancellation.Token);
-            await EncodeAsync(inputPath, outputPath, inputSeconds, jobCancellation.Token);
-            await VerifyDurationAsync(inputPath, outputPath, inputSeconds, jobCancellation.Token);
+            await EncodeAsync(inputPath, outputPath, inputSeconds, onProgress, jobCancellation.Token);
+            outputSeconds = await ProbeDurationAsync(outputPath, jobCancellation.Token);
+            VerifyDuration(inputPath, inputSeconds, outputSeconds);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -63,6 +67,8 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
         }
 
         _logger.LogInformation("Transcoded {Input} in {Elapsed}.", inputPath, stopwatch.Elapsed);
+
+        return outputSeconds;
     }
 
     public int StopLeftovers()
@@ -81,22 +87,8 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
     {
         string encoder = FfmpegArgumentBuilder.VideoEncoder(_settings.Codec);
 
-        (int ExitCode, string StandardOutput, string StandardError) encoders;
-        try
-        {
-            encoders = await RunToolAsync(_settings.FfmpegPath, ["-hide_banner", "-encoders"], cancellationToken);
-        }
-        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
-        {
-            throw new InvalidOperationException(
-                $"Could not start ffmpeg ('{_settings.FfmpegPath}'). Install FFmpeg or set Transcode:FfmpegPath.", ex);
-        }
-
-        if (encoders.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"'{_settings.FfmpegPath} -encoders' exited with code {encoders.ExitCode}: {encoders.StandardError.Trim()}");
-        }
+        ToolResultModel encoders = await RunStartupCheckAsync(
+            "ffmpeg", _settings.FfmpegPath, ["-hide_banner", "-encoders"], "Install FFmpeg or set Transcode:FfmpegPath.", cancellationToken);
 
         if (!FfmpegEncoderList.Contains(encoders.StandardOutput, encoder))
         {
@@ -105,70 +97,48 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
                 "Use an ffmpeg build that includes it, or set Transcode:Codec to a codec this build supports.");
         }
 
-        (int ExitCode, string StandardOutput, string StandardError) probe;
-        try
-        {
-            probe = await RunToolAsync(_settings.FfprobePath, ["-hide_banner", "-version"], cancellationToken);
-        }
-        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
-        {
-            throw new InvalidOperationException(
-                $"Could not start ffprobe ('{_settings.FfprobePath}'). FFmpeg builds include it; install it or set Transcode:FfprobePath.", ex);
-        }
-
-        if (probe.ExitCode != 0)
-        {
-            throw new InvalidOperationException(
-                $"'{_settings.FfprobePath} -version' exited with code {probe.ExitCode}: {probe.StandardError.Trim()}");
-        }
+        await RunStartupCheckAsync(
+            "ffprobe",
+            _settings.FfprobePath,
+            ["-hide_banner", "-version"],
+            "FFmpeg builds include it; install it or set Transcode:FfprobePath.",
+            cancellationToken);
 
         _logger.LogInformation("ffmpeg is available with the {Encoder} encoder.", encoder);
     }
 
-    private async Task EncodeAsync(string inputPath, string outputPath, double? inputSeconds, CancellationToken cancellationToken)
+    private async Task EncodeAsync(
+        string inputPath, string outputPath, double? inputSeconds, Action<double>? onProgress, CancellationToken cancellationToken)
     {
-        ProcessStartInfo startInfo = new()
-        {
-            FileName = _settings.FfmpegPath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
+        using Process process = ToolProcess.Create(
+            _settings.FfmpegPath, FfmpegArgumentBuilder.Build(_settings, _threads, inputPath, outputPath));
 
-        foreach (string argument in FfmpegArgumentBuilder.Build(_settings, _threads, inputPath, outputPath))
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        Queue<string> stderrTail = new();
-        using Process process = new() { StartInfo = startInfo };
-        process.ErrorDataReceived += (_, e) =>
-        {
-            if (e.Data is null)
-            {
-                return;
-            }
-
-            lock (stderrTail)
-            {
-                stderrTail.Enqueue(e.Data);
-                while (stderrTail.Count > StderrTailLines)
-                {
-                    stderrTail.Dequeue();
-                }
-            }
-        };
+        LineTail stderrTail = new(StderrTailLines);
+        process.ErrorDataReceived += (_, e) => stderrTail.Add(e.Data);
 
         if (inputSeconds is not null)
         {
-            ProgressReporter reporter = new(_logger, inputPath, inputSeconds.Value);
+            FfmpegProgressReporter reporter = new(_logger, inputPath, inputSeconds.Value, onProgress);
             process.OutputDataReceived += (_, e) => reporter.Handle(e.Data);
         }
 
         _logger.LogInformation(
             "Transcoding {Input} to {Output} as {Codec} on {Threads} thread(s).", inputPath, outputPath, _settings.Codec, _threads);
 
+        StartEncoder(process);
+        process.BeginErrorReadLine();
+        process.BeginOutputReadLine();
+
+        await ToolProcess.WaitForExitOrKillAsync(process, cancellationToken);
+
+        if (process.ExitCode != 0)
+        {
+            throw new TranscodeFailedException($"ffmpeg exited with code {process.ExitCode}.", process.ExitCode, stderrTail.GetText());
+        }
+    }
+
+    private void StartEncoder(Process process)
+    {
         try
         {
             process.Start();
@@ -192,36 +162,11 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
         {
             _logger.LogWarning("ffmpeg could not be tied to this process, so it may keep running if the app is killed.");
         }
-
-        process.BeginErrorReadLine();
-        process.BeginOutputReadLine();
-
-        try
-        {
-            await process.WaitForExitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            KillProcessTree(process);
-            await process.WaitForExitAsync(CancellationToken.None);
-            throw;
-        }
-
-        if (process.ExitCode != 0)
-        {
-            string tail;
-            lock (stderrTail)
-            {
-                tail = string.Join(Environment.NewLine, stderrTail);
-            }
-
-            throw new TranscodeFailedException($"ffmpeg exited with code {process.ExitCode}.", process.ExitCode, tail);
-        }
     }
 
     // ffmpeg exits 0 even when the input ended early (a cut-off or damaged file), so a clean exit isn't proof the
     // whole video was converted. The source is deleted afterwards, which makes a silently shortened result costly.
-    private async Task VerifyDurationAsync(string inputPath, string outputPath, double? inputSeconds, CancellationToken cancellationToken)
+    private void VerifyDuration(string inputPath, double? inputSeconds, double? outputSeconds)
     {
         if (inputSeconds is null)
         {
@@ -229,16 +174,18 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
             return;
         }
 
-        double outputSeconds = await ProbeDurationAsync(outputPath, cancellationToken)
-            ?? throw new TranscodeFailedException("The transcoded file has no readable duration.", null, string.Empty);
+        if (outputSeconds is null)
+        {
+            throw new TranscodeFailedException("The transcoded file has no readable duration.", null, string.Empty);
+        }
 
         if (!DurationVerifier.IsComplete(
-                inputSeconds.Value, outputSeconds, _settings.DurationTolerancePercent, _settings.DurationToleranceSeconds))
+                inputSeconds.Value, outputSeconds.Value, _settings.DurationTolerancePercent, _settings.DurationToleranceSeconds))
         {
             throw new TranscodeFailedException(
                 string.Create(
                     CultureInfo.InvariantCulture,
-                    $"The transcoded video is {outputSeconds:F1}s long but the source is {inputSeconds.Value:F1}s; the source file is probably truncated or corrupt."),
+                    $"The transcoded video is {outputSeconds.Value:F1}s long but the source is {inputSeconds.Value:F1}s; the source file is probably truncated or corrupt."),
                 null,
                 string.Empty);
         }
@@ -246,13 +193,11 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
 
     private async Task<double?> ProbeDurationAsync(string path, CancellationToken cancellationToken)
     {
-        (int ExitCode, string StandardOutput, string StandardError) result;
+        ToolResultModel result;
         try
         {
-            result = await RunToolAsync(
-                _settings.FfprobePath,
-                ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path],
-                cancellationToken);
+            result = await ToolProcess.RunAsync(
+                _settings.FfprobePath, ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", path], cancellationToken);
         }
         catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
@@ -267,95 +212,27 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
         return FfprobeOutputParser.ParseDuration(result.StandardOutput);
     }
 
-    private static async Task<(int ExitCode, string StandardOutput, string StandardError)> RunToolAsync(
-        string fileName,
-        IReadOnlyList<string> arguments,
-        CancellationToken cancellationToken)
+    // Fails startup with a readable message instead of failing the first upload.
+    private static async Task<ToolResultModel> RunStartupCheckAsync(
+        string toolName, string toolPath, string[] arguments, string hint, CancellationToken cancellationToken)
     {
-        ProcessStartInfo startInfo = new()
-        {
-            FileName = fileName,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        foreach (string argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
-
-        using Process process = new() { StartInfo = startInfo };
-        process.Start();
-
-        // Both streams are read at once so a full pipe can't stall the process.
-        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
-        Task<string> standardError = process.StandardError.ReadToEndAsync(CancellationToken.None);
-
+        ToolResultModel result;
         try
         {
-            await process.WaitForExitAsync(cancellationToken);
+            result = await ToolProcess.RunAsync(toolPath, arguments, cancellationToken);
         }
-        catch (OperationCanceledException)
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
         {
-            KillProcessTree(process);
-            await process.WaitForExitAsync(CancellationToken.None);
-            throw;
+            throw new InvalidOperationException($"Could not start {toolName} ('{toolPath}'). {hint}", ex);
         }
 
-        return (process.ExitCode, await standardOutput, await standardError);
-    }
-
-    private sealed class ProgressReporter
-    {
-        private const int StepPercent = 5;
-        private const int EstimateAfterSeconds = 30;
-
-        private readonly ILogger _logger;
-        private readonly string _inputPath;
-        private readonly double _totalSeconds;
-        private readonly Stopwatch _stopwatch = Stopwatch.StartNew();
-        private int _lastReportedStep;
-        private bool _estimateLogged;
-
-        public ProgressReporter(ILogger logger, string inputPath, double totalSeconds)
+        if (result.ExitCode != 0)
         {
-            _logger = logger;
-            _inputPath = inputPath;
-            _totalSeconds = totalSeconds;
+            throw new InvalidOperationException(
+                $"'{toolPath} {string.Join(' ', arguments)}' exited with code {result.ExitCode}: {result.StandardError.Trim()}");
         }
 
-        public void Handle(string? line)
-        {
-            double? elapsedSeconds = line is null ? null : FfmpegProgressParser.ParseElapsedSeconds(line);
-            if (elapsedSeconds is null)
-            {
-                return;
-            }
-
-            // Speed only means something once the encode has settled, hence the wait before the first estimate.
-            if (!_estimateLogged && elapsedSeconds.Value > 0 && _stopwatch.Elapsed.TotalSeconds >= EstimateAfterSeconds)
-            {
-                _estimateLogged = true;
-                double speed = elapsedSeconds.Value / _stopwatch.Elapsed.TotalSeconds;
-                TimeSpan total = TimeSpan.FromSeconds(Math.Round(_totalSeconds / speed));
-                _logger.LogInformation(
-                    "Transcoding {Input}: running at {Speed:F2}x, about {Total} in total.", _inputPath, speed, total);
-            }
-
-            double fraction = Math.Clamp(elapsedSeconds.Value / _totalSeconds, 0, 1);
-            int step = (int)(fraction * 100) / StepPercent;
-            if (step <= _lastReportedStep || fraction >= 1)
-            {
-                return;
-            }
-
-            _lastReportedStep = step;
-            TimeSpan remaining = TimeSpan.FromSeconds(Math.Round(_stopwatch.Elapsed.TotalSeconds * (1 - fraction) / fraction));
-            _logger.LogInformation(
-                "Transcoding {Input}: {Percent}%, about {Remaining} left.", _inputPath, step * StepPercent, remaining);
-        }
+        return result;
     }
 
     private static FileStream AcquireOutputLock(string outputPath)
@@ -368,18 +245,6 @@ public class FfmpegVideoTranscoder : IVideoTranscoder
         catch (IOException)
         {
             throw new TranscodeAlreadyRunningException(outputPath);
-        }
-    }
-
-    private static void KillProcessTree(Process process)
-    {
-        try
-        {
-            process.Kill(entireProcessTree: true);
-        }
-        catch (InvalidOperationException)
-        {
-            // Already exited.
         }
     }
 

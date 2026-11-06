@@ -3,7 +3,9 @@ namespace Infrastructure.Abstraction.Services;
 // Works on local paths and never leaves an output file behind on failure or cancellation.
 public interface IVideoTranscoder
 {
-    Task TranscodeAsync(string inputPath, string outputPath, CancellationToken cancellationToken = default);
+    // Returns the output duration in seconds (null when unreadable); onProgress gets the encoded fraction, 0 to 1.
+    Task<double?> TranscodeAsync(
+        string inputPath, string outputPath, Action<double>? onProgress = null, CancellationToken cancellationToken = default);
 
     // Stops encodes a previous run left behind, so they don't compete with (or overwrite) the jobs of this run.
     int StopLeftovers();

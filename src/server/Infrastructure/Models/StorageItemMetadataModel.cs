@@ -1,3 +1,7 @@
 namespace Infrastructure.Models;
 
-public record StorageItemMetadataModel(long SizeBytes, DateTimeOffset LastModifiedUtc);
+public record StorageItemMetadataModel
+{
+    public required long SizeBytes { get; init; }
+    public required DateTimeOffset LastModifiedUtc { get; init; }
+}

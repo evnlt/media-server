@@ -2,8 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Api.Models;
 
-public sealed class LoginRequest
+public sealed record LoginRequest
 {
-    [Required] public string Username { get; set; } = default!;
-    [Required] public string Password { get; set; } = default!;
+    [Required] public required string Username { get; init; }
+    [Required] public required string Password { get; init; }
 }
