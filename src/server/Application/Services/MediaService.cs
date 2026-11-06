@@ -15,6 +15,7 @@ namespace Application.Services;
 public class MediaService : IMediaService
 {
     private const int MaxFileNameLength = 500;
+    private const string StreamContentType = "video/mp4";
 
     private readonly AppDbContext _db;
     private readonly IStorageProvider _storage;
@@ -115,6 +116,35 @@ public class MediaService : IMediaService
         await SyncAvailabilityAsync([mediaFile], cancellationToken);
 
         return mediaFile.ToModel(_progressTracker.GetPercent(mediaFile.Id));
+    }
+
+    public async Task<MediaStreamModel> OpenStreamAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        MediaFileEntity mediaFile = await _db.MediaFiles.FirstOrDefaultAsync(x => x.Id == id, cancellationToken)
+            ?? throw new NotFoundException("Media file not found.");
+        await SyncAvailabilityAsync([mediaFile], cancellationToken);
+
+        if (mediaFile.Status == MediaFileStatus.Missing)
+        {
+            throw new NotFoundException("Media file is missing from storage.");
+        }
+
+        if (mediaFile.Status != MediaFileStatus.Ready)
+        {
+            throw new ConflictException($"Media file is not ready to stream (status: {mediaFile.Status}).");
+        }
+
+        StorageItemMetadataModel metadata = await _storage.GetMetadataAsync(mediaFile.StoragePath, cancellationToken)
+            ?? throw new NotFoundException("Media file is missing from storage.");
+        Stream content = await _storage.OpenReadAsync(mediaFile.StoragePath, cancellationToken);
+
+        // Ready files are always the transcoder's MP4 output.
+        return new MediaStreamModel
+        {
+            Content = content,
+            ContentType = StreamContentType,
+            LastModified = metadata.LastModifiedUtc
+        };
     }
 
     // Files can disappear from (or be put back into) storage behind the app's back, so Ready and Missing follow the disk.

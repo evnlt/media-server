@@ -9,4 +9,6 @@ public interface IMediaService
     Task<IReadOnlyList<MediaFileModel>> GetAllAsync(CancellationToken cancellationToken = default);
 
     Task<MediaFileModel> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<MediaStreamModel> OpenStreamAsync(Guid id, CancellationToken cancellationToken = default);
 }

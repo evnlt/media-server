@@ -37,6 +37,18 @@ public class MediaController : ControllerBase
         return mediaFile.ToResponse();
     }
 
+    [HttpGet("{id:guid}/stream")]
+    public async Task<IActionResult> GetStream(Guid id, CancellationToken cancellationToken)
+    {
+        MediaStreamModel mediaStream = await _mediaService.OpenStreamAsync(id, cancellationToken);
+
+        return new FileStreamResult(mediaStream.Content, mediaStream.ContentType)
+        {
+            LastModified = mediaStream.LastModified,
+            EnableRangeProcessing = true
+        };
+    }
+
     // Takes no parameters: a CancellationToken parameter makes model binding drain the multipart body.
     [HttpPost]
     [DisableFormValueModelBinding]
