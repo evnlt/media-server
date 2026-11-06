@@ -1,3 +1,5 @@
+using Infrastructure.Enums;
+
 namespace Infrastructure.Entities;
 
 public class MediaFileEntity

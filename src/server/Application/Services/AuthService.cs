@@ -1,7 +1,7 @@
 using Application.Abstraction.Services;
-using Infrastructure.Auth;
+using Infrastructure;
 using Infrastructure.Entities;
-using Infrastructure.Persistence;
+using Infrastructure.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +20,7 @@ public class AuthService : IAuthService
 
     public async Task<UserEntity?> AuthenticateAsync(string username, string password, CancellationToken cancellationToken = default)
     {
-        if (username.Length > AdminOptions.MaxUsernameLength || password.Length > AdminOptions.MaxPasswordLength)
+        if (username.Length > AdminSettings.MaxUsernameLength || password.Length > AdminSettings.MaxPasswordLength)
         {
             return null;
         }

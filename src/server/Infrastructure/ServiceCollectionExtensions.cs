@@ -1,47 +1,55 @@
-using Infrastructure.Auth;
+using Infrastructure.Abstraction.Services;
 using Infrastructure.Entities;
-using Infrastructure.Persistence;
-using Infrastructure.Storage;
+using Infrastructure.Services;
+using Infrastructure.Settings;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, ConnectionStringSettings connectionStrings)
     {
-        var connectionString = configuration.GetConnectionString("Default")
-            ?? throw new InvalidOperationException("ConnectionStrings:Default is not configured.");
+        if (string.IsNullOrWhiteSpace(connectionStrings?.Default))
+        {
+            throw new InvalidOperationException("ConnectionStrings:Default is not configured.");
+        }
+
+        string connectionString = connectionStrings.Default;
 
         EnsureDatabaseDirectoryExists(connectionString);
         services.AddDbContext<AppDbContext>(o => o.UseSqlite(connectionString));
 
-        services.AddOptions<AdminOptions>().BindConfiguration(AdminOptions.SectionName).ValidateOnStart();
-        services.AddSingleton<IValidateOptions<AdminOptions>, AdminOptionsValidator>();
         services.AddScoped<IPasswordHasher<UserEntity>, PasswordHasher<UserEntity>>();
-
-        services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName).ValidateOnStart();
-        services.AddSingleton<IValidateOptions<StorageOptions>, StorageOptionsValidator>();
         services.AddSingleton<IStorageProvider, LocalStorageProvider>();
+        services.AddSingleton<IVideoTranscoder, FfmpegVideoTranscoder>();
 
         return services;
     }
 
+    public static Task EnsureTranscoderAvailableAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    {
+        return services.GetRequiredService<IVideoTranscoder>().EnsureAvailableAsync(cancellationToken);
+    }
+
+    public static int StopLeftoverTranscoders(this IServiceProvider services)
+    {
+        return services.GetRequiredService<IVideoTranscoder>().StopLeftovers();
+    }
+
     public static void MigrateDatabase(this IServiceProvider services)
     {
-        using var scope = services.CreateScope();
+        using IServiceScope scope = services.CreateScope();
         scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
     }
 
     private static void EnsureDatabaseDirectoryExists(string connectionString)
     {
-        var dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
-        var directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
+        string dataSource = new SqliteConnectionStringBuilder(connectionString).DataSource;
+        string? directory = Path.GetDirectoryName(Path.GetFullPath(dataSource));
         if (!string.IsNullOrEmpty(directory))
         {
             Directory.CreateDirectory(directory);

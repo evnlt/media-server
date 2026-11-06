@@ -14,6 +14,9 @@ services:
       - ConnectionStrings__Default=Data Source=/data/db/media-server.db
       - DataProtection__KeysPath=/data/keys
       - Storage__RootPath=/data/media
+      # Any setting under "Transcode" in appsettings.json can be overridden here the same way,
+      # e.g. - Transcode__Av1__Crf=28
+      - Transcode__Codec=${TRANSCODE_CODEC:-H264}
       - Admin__Username=${ADMIN_USERNAME:?Set ADMIN_USERNAME in .env}
       - Admin__Password=${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env (min 10 characters)}
     restart: unless-stopped
