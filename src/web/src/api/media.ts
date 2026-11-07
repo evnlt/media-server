@@ -66,3 +66,7 @@ function describeFailure(xhr: XMLHttpRequest): string {
 export function streamUrl(id: string): string {
   return `/api/media/${encodeURIComponent(id)}/stream`;
 }
+
+export function downloadUrl(id: string): string {
+  return `/api/media/${encodeURIComponent(id)}/download`;
+}

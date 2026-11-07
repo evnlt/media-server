@@ -16,6 +16,7 @@ public class MediaService : IMediaService
 {
     private const int MaxFileNameLength = 500;
     private const string StreamContentType = "video/mp4";
+    private const string StreamExtension = ".mp4";
 
     private readonly AppDbContext _db;
     private readonly IStorageProvider _storage;
@@ -143,7 +144,9 @@ public class MediaService : IMediaService
         {
             Content = content,
             ContentType = StreamContentType,
-            LastModified = metadata.LastModifiedUtc
+            LastModified = metadata.LastModifiedUtc,
+            // The upload may have been e.g. .mkv, but what we serve is the MP4.
+            DownloadFileName = Path.ChangeExtension(mediaFile.FileName, StreamExtension)
         };
     }
 
