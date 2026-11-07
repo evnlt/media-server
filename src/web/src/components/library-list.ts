@@ -5,10 +5,12 @@ const pollIntervalMs = 10_000;
 
 export interface LibraryList {
   refresh: () => Promise<void>;
+  setSelected: (id: string | null) => void;
 }
 
 // Polls only while something is still in progress, and skips ticks while the tab is hidden.
-export function renderLibraryList(container: HTMLElement): LibraryList {
+// Only Ready items are selectable; what selecting does is up to the caller.
+export function renderLibraryList(container: HTMLElement, onSelect: (mediaFile: MediaFile) => void): LibraryList {
   container.innerHTML = `
     <p id="library-status" class="status" role="status">Loading...</p>
     <ul id="library-items" class="library"></ul>
@@ -17,12 +19,13 @@ export function renderLibraryList(container: HTMLElement): LibraryList {
   const status = container.querySelector<HTMLElement>('#library-status')!;
   const items = container.querySelector<HTMLUListElement>('#library-items')!;
   let timer: number | undefined;
+  let mediaFiles: MediaFile[] = [];
+  let selectedId: string | null = null;
 
   async function refresh(): Promise<void> {
     window.clearTimeout(timer);
     timer = undefined;
 
-    let mediaFiles: MediaFile[];
     try {
       mediaFiles = await listMedia();
     } catch (error) {
@@ -34,7 +37,7 @@ export function renderLibraryList(container: HTMLElement): LibraryList {
 
     status.classList.remove('error');
     status.textContent = mediaFiles.length === 0 ? 'No videos yet. Upload one above.' : '';
-    items.replaceChildren(...mediaFiles.map(renderItem));
+    render();
 
     if (mediaFiles.some(isInProgress)) {
       schedule();
@@ -57,22 +60,38 @@ export function renderLibraryList(container: HTMLElement): LibraryList {
     }, pollIntervalMs);
   }
 
+  function render(): void {
+    items.replaceChildren(...mediaFiles.map((mediaFile) => renderItem(mediaFile, mediaFile.id === selectedId, onSelect)));
+  }
+
+  function setSelected(id: string | null): void {
+    selectedId = id;
+    render();
+  }
+
   void refresh();
 
-  return { refresh };
+  return { refresh, setSelected };
 }
 
 function isInProgress(mediaFile: MediaFile): boolean {
   return mediaFile.status === 'Uploading' || mediaFile.status === 'Queued' || mediaFile.status === 'Transcoding';
 }
 
-function renderItem(mediaFile: MediaFile): HTMLLIElement {
+function renderItem(mediaFile: MediaFile, selected: boolean, onSelect: (mediaFile: MediaFile) => void): HTMLLIElement {
   const item = document.createElement('li');
   item.className = `library-item status-${mediaFile.status.toLowerCase()}`;
+  if (selected) {
+    item.classList.add('selected');
+  }
 
-  const name = document.createElement('span');
+  const name = document.createElement(mediaFile.status === 'Ready' ? 'button' : 'span');
   name.className = 'library-name';
   name.textContent = mediaFile.fileName;
+  if (name instanceof HTMLButtonElement) {
+    name.type = 'button';
+    name.addEventListener('click', () => onSelect(mediaFile));
+  }
 
   const details = document.createElement('span');
   details.className = 'library-details';
