@@ -11,7 +11,7 @@ export function renderVideoPlayer(container: HTMLElement, onClose: () => void): 
       <span id="player-title" class="player-title"></span>
       <button id="player-close" type="button" aria-label="Close player">x</button>
     </div>
-    <video id="player-video" controls preload="metadata"></video>
+    <video id="player-video" controls controlslist="nodownload" preload="metadata"></video>
     <p id="player-status" class="error" role="status"></p>
   `;
   container.classList.add('player');

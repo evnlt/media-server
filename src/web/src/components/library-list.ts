@@ -1,4 +1,4 @@
-import { listMedia, type MediaFile } from '../api/media';
+import { downloadUrl, listMedia, type MediaFile } from '../api/media';
 import { formatDuration, formatSize } from '../format';
 
 const pollIntervalMs = 10_000;
@@ -96,6 +96,12 @@ function renderItem(mediaFile: MediaFile, selected: boolean, onSelect: (mediaFil
   const details = document.createElement('span');
   details.className = 'library-details';
   details.textContent = describe(mediaFile);
+  if (mediaFile.status === 'Ready') {
+    const download = document.createElement('a');
+    download.href = downloadUrl(mediaFile.id);
+    download.textContent = 'Download';
+    details.append(' - ', download);
+  }
 
   item.append(name, details);
   return item;

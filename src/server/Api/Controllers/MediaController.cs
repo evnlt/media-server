@@ -49,6 +49,20 @@ public class MediaController : ControllerBase
         };
     }
 
+    // Range processing lets browsers and download managers resume an interrupted download.
+    [HttpGet("{id:guid}/download")]
+    public async Task<IActionResult> Download(Guid id, CancellationToken cancellationToken)
+    {
+        MediaStreamModel mediaStream = await _mediaService.OpenStreamAsync(id, cancellationToken);
+
+        return new FileStreamResult(mediaStream.Content, mediaStream.ContentType)
+        {
+            FileDownloadName = mediaStream.DownloadFileName,
+            LastModified = mediaStream.LastModified,
+            EnableRangeProcessing = true
+        };
+    }
+
     // Takes no parameters: a CancellationToken parameter makes model binding drain the multipart body.
     [HttpPost]
     [DisableFormValueModelBinding]
