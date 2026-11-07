@@ -134,3 +134,48 @@ progress {
   color: #ff7b7b;
   opacity: 1;
 }
+
+.player {
+  display: grid;
+  gap: 0.25rem;
+  width: min(48rem, 100%);
+  margin: 1rem auto;
+}
+
+.player[hidden] {
+  display: none;
+}
+
+/* Equal side columns keep the title centered over the video. */
+.player-header {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) 2.5rem;
+  align-items: center;
+}
+
+.player-title {
+  grid-column: 2;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+#player-close {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.player video {
+  width: 100%;
+  background: #000;
+}
+
+button.library-name {
+  border: none;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.library-item.selected {
+  border-left-width: 4px;
+}

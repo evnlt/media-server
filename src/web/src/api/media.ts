@@ -62,3 +62,7 @@ function describeFailure(xhr: XMLHttpRequest): string {
     return `Upload failed (${xhr.status}).`;
   }
 }
+
+export function streamUrl(id: string): string {
+  return `/api/media/${encodeURIComponent(id)}/stream`;
+}
